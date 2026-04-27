@@ -142,9 +142,10 @@ async def test_mongodb_auto_id_replaces_mapper_id():
 
     moss_docs = fake_moss.calls[0]["docs"]
     assert len(moss_docs) == 2
-    assert all(doc.id not in {"a1", "a2"} for doc in moss_docs)
+    original_ids = {"a1", "a2"}
     for doc in moss_docs:
-        assert uuid.UUID(doc.id)
+        assert len(doc.id) == 8
+        assert doc.id not in original_ids
     assert [doc.text for doc in moss_docs] == ["Refunds take 3-5 days.", "We ship within 24 hours."]
     assert [doc.metadata for doc in moss_docs] == [
         {"title": "Refund policy"},

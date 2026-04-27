@@ -10,7 +10,7 @@ from moss import DocumentInfo, MossClient, MutationResult
 
 def _replace_doc_id(doc: DocumentInfo) -> DocumentInfo:
     return DocumentInfo(
-        id=str(uuid.uuid4()),
+        id=str(uuid.uuid4())[:8],
         text=doc.text,
         metadata=getattr(doc, "metadata", None),
         embedding=getattr(doc, "embedding", None),
@@ -26,10 +26,11 @@ async def ingest(
     auto_id: bool = False,
 ) -> MutationResult | None:
     """Copy every `DocumentInfo` from `source` into a fresh Moss index."""
-    docs = list(source)
+    if auto_id:
+        docs = [_replace_doc_id(doc) for doc in source]
+    else:
+        docs = list(source)
     if not docs:
         return None
-    if auto_id:
-        docs = [_replace_doc_id(doc) for doc in docs]
     client = MossClient(project_id, project_key)
     return await client.create_index(index_name, docs, model_id=model_id)
