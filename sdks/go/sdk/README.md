@@ -19,7 +19,7 @@ The Go SDK now has two layers:
 
 ## Current limitations
 
-- the SDK requires the `libmoss` C SDK and the `libmoss` build tag for real runtime operations
+- native/local runtime operations require the `libmoss` build tag
 - cloud query fallback supports `TopK` and caller-provided embeddings; `Alpha` and `Filter` require a locally loaded index
 - `LoadIndexOptions.CachePath` is not exposed by the current `libmoss` C API yet
 
@@ -31,9 +31,8 @@ From this repository, import the package at:
 github.com/usemoss/moss/sdks/go/sdk
 ```
 
-Download the `libmoss` C SDK release and build with `-tags libmoss`. The
-bindings setup is documented in
-[`../bindings/README.md`](../bindings/README.md).
+Build with `-tags libmoss` to enable the bundled native runtime. The bindings
+setup is documented in [`../bindings/README.md`](../bindings/README.md).
 
 ## Quick start
 
@@ -143,9 +142,6 @@ Run them with native bindings enabled:
 
 ```bash
 cd ../../../examples/go
-export CGO_CFLAGS="-I<libmoss-sdk-root>/include"
-export CGO_LDFLAGS="-L<libmoss-sdk-root>/lib"
-export LD_LIBRARY_PATH="<libmoss-sdk-root>/lib"
 go run -tags libmoss ./basic
 ```
 
@@ -163,8 +159,5 @@ Then run:
 ```bash
 cd sdks/go/sdk
 go test ./...
-CGO_CFLAGS="-I<libmoss-sdk-root>/include" \
-CGO_LDFLAGS="-L<libmoss-sdk-root>/lib" \
-LD_LIBRARY_PATH="<libmoss-sdk-root>/lib" \
 go test -tags libmoss ./...
 ```

@@ -14,7 +14,7 @@ Current status:
 
 Important note:
 
-- all runtime operations require the `libmoss` C SDK plus `-tags libmoss`
+- native/local runtime operations require `-tags libmoss`
 
 The public SDK module lives under [`sdks/go/sdk/`](./sdk/), and the native
 bindings module lives under [`sdks/go/bindings/`](./bindings/).
