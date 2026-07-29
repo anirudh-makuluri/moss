@@ -14,14 +14,16 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 )
 
 const (
-	defaultReleaseTag = "c-sdk-v0.9.0"
-	defaultRepo       = "usemoss/moss"
+	defaultReleaseTag  = "c-sdk-v0.9.0"
+	defaultRepo        = "usemoss/moss"
+	bindingsModulePath = "github.com/usemoss/moss/sdks/go/bindings"
 )
 
 type platform struct {
@@ -79,12 +81,24 @@ func main() {
 	}
 
 	for _, p := range targets {
-		if err := installPlatform(root, baseURL, version, p, checksums, *force); err != nil {
+		libDir, installHeader, err := resolveLibDir(root, version, p.id)
+		if err != nil {
+			fatal(err)
+		}
+		if err := installPlatform(root, libDir, installHeader, baseURL, version, p, checksums, *force); err != nil {
 			fatal(fmt.Errorf("%s: %w", p.id, err))
+		}
+		if libDir != filepath.Join(root, "lib", p.id) {
+			printLinkerHint(p, libDir)
 		}
 	}
 
-	fmt.Printf("Installed Moss C SDK %s into %s\n", *releaseTag, root)
+	fmt.Printf("Installed Moss C SDK %s\n", *releaseTag)
+	if !isWritableDir(root) {
+		fmt.Println("Build with -mod=vendor after `go mod vendor`, or export the CGO_LDFLAGS shown above.")
+	} else {
+		fmt.Printf("Native libraries installed under %s\n", root)
+	}
 }
 
 func resolveBindingsDir(explicit string) (string, error) {
@@ -94,11 +108,63 @@ func resolveBindingsDir(explicit string) (string, error) {
 	if env := strings.TrimSpace(os.Getenv("MOSS_BINDINGS_DIR")); env != "" {
 		return filepath.Abs(env)
 	}
+	if dir, err := bindingsDirFromGoList(); err == nil {
+		return dir, nil
+	}
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
-		return "", errors.New("unable to locate install tool path")
+		return "", errors.New("unable to locate bindings directory; set MOSS_BINDINGS_DIR or run from a module that requires github.com/usemoss/moss/sdks/go/bindings")
 	}
 	return filepath.Abs(filepath.Join(filepath.Dir(file), "..", "..", "bindings"))
+}
+
+func bindingsDirFromGoList() (string, error) {
+	cmd := exec.Command("go", "list", "-f", "{{.Dir}}", bindingsModulePath)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	dir := strings.TrimSpace(string(out))
+	if dir == "" {
+		return "", errors.New("bindings package directory not found")
+	}
+	return filepath.Abs(dir)
+}
+
+func resolveLibDir(bindingsRoot, version, platformID string) (string, bool, error) {
+	inBindings := filepath.Join(bindingsRoot, "lib", platformID)
+	if isWritableDir(bindingsRoot) {
+		return inBindings, true, nil
+	}
+
+	cacheRoot, err := os.UserCacheDir()
+	if err != nil {
+		return "", false, err
+	}
+	return filepath.Join(cacheRoot, "moss-go", version, platformID), false, nil
+}
+
+func isWritableDir(dir string) bool {
+	if dir == "" {
+		return false
+	}
+	test := filepath.Join(dir, ".moss-install-write-test")
+	if err := os.WriteFile(test, []byte("ok"), 0o644); err != nil {
+		return false
+	}
+	_ = os.Remove(test)
+	return true
+}
+
+func printLinkerHint(p platform, libDir string) {
+	switch p.id {
+	case "darwin-arm64":
+		fmt.Printf("export CGO_LDFLAGS=\"-L%s -lmoss -lc++ -framework Security -framework SystemConfiguration\"\n", libDir)
+	case "windows-amd64":
+		fmt.Printf("set CGO_LDFLAGS=-L%s %s\n", libDir, p.libFile)
+	default:
+		fmt.Printf("export CGO_LDFLAGS=\"-L%s -lmoss -lstdc++ -ldl -lm -lpthread\"\n", libDir)
+	}
 }
 
 func selectPlatforms(all bool) ([]platform, error) {
@@ -153,19 +219,23 @@ func fetchChecksums(baseURL string) (map[string]string, error) {
 	return checksums, scanner.Err()
 }
 
-func installPlatform(bindingsRoot, baseURL, version string, p platform, checksums map[string]string, force bool) error {
+func installPlatform(bindingsRoot, libDir string, installHeader bool, baseURL, version string, p platform, checksums map[string]string, force bool) error {
 	archive := fmt.Sprintf("libmoss-v%s-%s.tar.gz", version, p.triple)
 	wantChecksum, ok := checksums[archive]
 	if !ok {
 		return fmt.Errorf("checksum not found for %s", archive)
 	}
 
-	destDir := filepath.Join(bindingsRoot, "lib", p.id)
+	destDir := libDir
 	destLib := filepath.Join(destDir, p.libFile)
 	headerPath := filepath.Join(bindingsRoot, "include", "libmoss.h")
 
 	if !force {
 		if err := verifyFileChecksum(destLib, wantChecksum); err == nil {
+			if !installHeader {
+				fmt.Printf("skip %s (already installed)\n", p.id)
+				return nil
+			}
 			if _, err := os.Stat(headerPath); err == nil {
 				fmt.Printf("skip %s (already installed)\n", p.id)
 				return nil
@@ -176,8 +246,10 @@ func installPlatform(bindingsRoot, baseURL, version string, p platform, checksum
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(headerPath), 0o755); err != nil {
-		return err
+	if installHeader {
+		if err := os.MkdirAll(filepath.Dir(headerPath), 0o755); err != nil {
+			return err
+		}
 	}
 
 	tmp, err := os.MkdirTemp("", "moss-install-*")
@@ -196,8 +268,10 @@ func installPlatform(bindingsRoot, baseURL, version string, p platform, checksum
 		return err
 	}
 
-	if err := copyFile(filepath.Join(extractedRoot, "include", "libmoss.h"), headerPath); err != nil {
-		return err
+	if installHeader {
+		if err := copyFile(filepath.Join(extractedRoot, "include", "libmoss.h"), headerPath); err != nil {
+			return err
+		}
 	}
 	if err := copyFile(filepath.Join(extractedRoot, p.srcLib), destLib); err != nil {
 		return err
