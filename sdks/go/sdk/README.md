@@ -27,9 +27,10 @@ The Go SDK now has two layers:
 
 ```bash
 go get github.com/usemoss/moss/sdks/go/sdk
+go run github.com/usemoss/moss/sdks/go/tools/install@latest
 ```
 
-Published versions bundle static `libmoss` per platform. See
+The install tool downloads the static `libmoss` library for your platform. See
 [`../bindings/README.md`](../bindings/README.md) for Windows toolchain notes.
 
 Monorepo development uses the workspace in [`../go.work`](../go.work) and

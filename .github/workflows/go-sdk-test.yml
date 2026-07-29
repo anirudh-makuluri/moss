@@ -40,7 +40,8 @@ jobs:
           go-version: '1.22.2'
 
       - name: Install linux-amd64 native library
-        run: ./sdks/go/scripts/link_dev_lib.sh c-sdk-v0.9.0
+        working-directory: sdks/go
+        run: go run ./tools/install --release c-sdk-v0.9.0
 
       - name: Verify bindings compile with CGO
         working-directory: sdks/go/bindings

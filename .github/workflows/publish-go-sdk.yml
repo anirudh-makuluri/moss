@@ -13,7 +13,7 @@ on:
       go_version:
         description: 'Go module version to publish'
         required: true
-        default: 'v0.9.0'
+        default: 'v0.1.0'
 
 concurrency:
   group: go-sdk-release-${{ github.event.inputs.go_version }}
@@ -29,18 +29,6 @@ jobs:
         with:
           go-version: '1.22.2'
 
-      - name: Fetch static native libraries
-        run: ./sdks/go/scripts/fetch-static-libs.sh "${{ github.event.inputs.c_sdk_version }}"
-
-      - name: Verify linux-amd64 build
-        working-directory: sdks/go/sdk
-        env:
-          CGO_ENABLED: '1'
-        run: go build -v .
-
-      - name: Pin module versions
-        run: ./sdks/go/scripts/bump-module-versions.sh "${{ github.event.inputs.go_version }}"
-
       - name: Update bindings native version metadata
         shell: bash
         run: |
@@ -49,12 +37,12 @@ jobs:
           cat > sdks/go/bindings/version.go <<EOF
           package mosscore
 
-          // NativeLibVersion is the Moss C SDK version bundled with published Go bindings.
+          // NativeLibVersion is the Moss C SDK version downloaded at build time.
           const NativeLibVersion = "${NATIVE_VERSION}"
 
           // NativeLibReleaseTag is the GitHub release tag used to fetch native artifacts.
           const NativeLibReleaseTag = "${C_SDK_VERSION}"
           EOF
 
-      - name: Publish module tags
-        run: ./sdks/go/scripts/publish-module-tags.sh "${{ github.event.inputs.go_version }}"
+      - name: Publish source-only module tags
+        run: ./sdks/go/scripts/publish-sdk-module-tags.sh "${{ github.event.inputs.go_version }}"

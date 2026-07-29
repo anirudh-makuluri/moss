@@ -2,4 +2,8 @@
 
 package mosscore
 
-import _ "github.com/usemoss/moss/sdks/go/bindings/lib/linux-arm64"
+/*
+#cgo CFLAGS: -I${SRCDIR}/include
+#cgo LDFLAGS: -L${SRCDIR}/lib/linux-arm64 -lmoss -lstdc++ -ldl -lm -lpthread
+*/
+import "C"
