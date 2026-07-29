@@ -9,33 +9,76 @@ It mirrors the role of the other language bindings packages in this repository:
 - local query execution
 - cloud-backed manage operations exposed through the native client
 
-## Status
-
-The real bindings implementation is compiled only with the `libmoss` build tag.
-Without that tag, this package builds a stub that returns a clear
-`ErrBindingsUnavailable` error.
-
-## Local build workflow
-
-Download the matching `libmoss` C SDK release archive for your platform from:
-
-- <https://github.com/usemoss/moss/releases/tag/c-sdk-v0.9.0>
-
-For Linux `x86_64`, extract the archive somewhere local so you have:
-
-```text
-<sdk-root>/
-├── include/libmoss.h
-└── lib/libmoss.so
-```
-
-Then build with:
+## Installation (consumers)
 
 ```bash
-export CGO_CFLAGS="-I<sdk-root>/include"
-export CGO_LDFLAGS="-L<sdk-root>/lib"
-export LD_LIBRARY_PATH="<sdk-root>/lib"
-go test -tags libmoss ./...
+go get github.com/usemoss/moss/sdks/go/sdk
 ```
 
-The Go SDK module can then be built with the same flags and tag.
+Published releases bundle prebuilt static libraries per platform. No manual C SDK
+download, `LD_LIBRARY_PATH`, or `-tags libmoss` is required.
+
+Requirements:
+
+- `CGO_ENABLED=1` (default on Linux and macOS)
+- A C compiler (`gcc` on Linux, Xcode CLI tools on macOS, MinGW on Windows)
+
+## Layout
+
+```
+bindings/
+  include/libmoss.h          # committed C header
+  libmoss.go                 # CGO wrapper (requires CGO)
+  prebuilt_<os>_<arch>.go    # selects the platform linker module
+  lib/
+    linux-amd64/             # separate Go module with libmoss.a (release tags)
+    linux-arm64/
+    darwin-arm64/
+    windows-amd64/
+```
+
+On `main`, native `.a` / `.lib` files are gitignored. Release CI downloads them
+from [C SDK GitHub Releases](https://github.com/usemoss/moss/releases) and
+publishes versioned Go module tags.
+
+## Local development
+
+Install the native library for your current machine:
+
+```bash
+./sdks/go/scripts/link_dev_lib.sh c-sdk-v0.9.0
+```
+
+Or fetch all supported platforms (release prep):
+
+```bash
+./sdks/go/scripts/fetch-static-libs.sh c-sdk-v0.9.0
+```
+
+Then build with CGO enabled:
+
+```bash
+cd sdks/go/bindings
+CGO_ENABLED=1 go build .
+```
+
+## Publishing
+
+Maintainers run the **Publish Go SDK** GitHub Actions workflow. It:
+
+1. Downloads static libraries from a C SDK release
+2. Pins module versions in `go.mod` files
+3. Creates a release commit and pushes module tags (without updating `main`)
+
+Tags follow the monorepo convention:
+
+- `sdks/go/sdk/v0.9.0`
+- `sdks/go/bindings/v0.9.0`
+- `sdks/go/bindings/lib/linux-amd64/v0.9.0`
+- …
+
+## Build without CGO
+
+When `CGO_ENABLED=0`, this package builds a stub that returns
+`ErrBindingsUnavailable`. The public SDK can still run unit tests and cloud query
+fallback tests without native libraries.

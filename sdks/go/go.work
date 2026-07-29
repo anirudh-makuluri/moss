@@ -1,0 +1,10 @@
+go 1.22.2
+
+use (
+	./bindings
+	./bindings/lib/darwin-arm64
+	./bindings/lib/linux-amd64
+	./bindings/lib/linux-arm64
+	./bindings/lib/windows-amd64
+	./sdk
+)

@@ -1,4 +1,4 @@
-//go:build !libmoss
+//go:build !cgo
 
 package mosscore
 

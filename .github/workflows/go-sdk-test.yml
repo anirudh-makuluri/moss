@@ -1,0 +1,55 @@
+name: Go SDK test
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sdks/go/**'
+      - '.github/workflows/go-sdk-test.yml'
+  pull_request:
+    paths:
+      - 'sdks/go/**'
+      - '.github/workflows/go-sdk-test.yml'
+
+jobs:
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.2'
+
+      - name: Run SDK unit tests without native bindings
+        working-directory: sdks/go/sdk
+        env:
+          CGO_ENABLED: '0'
+        run: go test ./...
+
+  bindings-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.2'
+
+      - name: Install linux-amd64 native library
+        run: ./sdks/go/scripts/link_dev_lib.sh c-sdk-v0.9.0
+
+      - name: Verify bindings compile with CGO
+        working-directory: sdks/go/bindings
+        env:
+          CGO_ENABLED: '1'
+        run: go build -v .
+
+      - name: Verify SDK compiles with CGO
+        working-directory: sdks/go/sdk
+        env:
+          CGO_ENABLED: '1'
+        run: go build -v .
