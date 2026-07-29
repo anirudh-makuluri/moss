@@ -1,20 +1,33 @@
 # Moss Go SDK
 
-The Go work now has the same two-layer direction as the other Moss SDKs:
+The Go SDK follows the same two-layer design as the other Moss SDKs:
 
 - `sdks/go/sdk/` contains the public Go SDK
 - `sdks/go/bindings/` wraps the native `libmoss` runtime via CGO
 
-Current status:
+## Install
 
-- bindings-backed manage operations for mutations and metadata reads
-- local `LoadIndex` / `UnloadIndex` / `GetIndexInfo` / local `Query` via `libmoss`
-- examples under `examples/go/` and unit tests
-- env-gated integration test scaffold
+```bash
+go get github.com/usemoss/moss/sdks/go/sdk
+```
 
-Important note:
+Published module versions bundle static `libmoss` per platform. You need CGO and a
+C compiler, but not a manual C SDK download.
 
-- all runtime operations require the `libmoss` C SDK plus `-tags libmoss`
+## Local development
 
-The public SDK module lives under [`sdks/go/sdk/`](./sdk/), and the native
-bindings module lives under [`sdks/go/bindings/`](./bindings/).
+```bash
+./sdks/go/scripts/link_dev_lib.sh c-sdk-v0.9.0
+cd sdks/go/sdk
+CGO_ENABLED=1 go test ./...
+```
+
+Unit tests run without native libraries when `CGO_ENABLED=0`.
+
+## Publishing
+
+See [`bindings/README.md`](./bindings/README.md) and
+[`.github/workflows/publish-go-sdk.yml`](../../.github/workflows/publish-go-sdk.yml).
+
+The public SDK module lives under [`sdk/`](./sdk/), and the native bindings module
+lives under [`bindings/`](./bindings/).

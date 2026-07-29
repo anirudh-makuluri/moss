@@ -16,13 +16,19 @@ export MOSS_PROJECT_ID=...
 export MOSS_PROJECT_KEY=...
 ```
 
-Runtime operations require the `libmoss` C SDK and the `libmoss` build tag:
+Install the native library for your platform (monorepo dev):
 
 ```bash
-export CGO_CFLAGS="-I<libmoss-sdk-root>/include"
-export CGO_LDFLAGS="-L<libmoss-sdk-root>/lib"
-export LD_LIBRARY_PATH="<libmoss-sdk-root>/lib"
-
-go run -tags libmoss ./basic
-go run -tags libmoss ./custom-embeddings
+../../sdks/go/scripts/link_dev_lib.sh c-sdk-v0.9.0
 ```
+
+Then run an example:
+
+```bash
+cd examples/go
+go run ./basic
+go run ./custom-embeddings
+```
+
+Published installs (`go get github.com/usemoss/moss/sdks/go/sdk`) bundle static
+libraries automatically and do not need the script above.
