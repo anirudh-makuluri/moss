@@ -27,13 +27,15 @@ The Go SDK now has two layers:
 
 ```bash
 go get github.com/usemoss/moss/sdks/go/sdk
-go run github.com/usemoss/moss/sdks/go/tools/install@latest
+go run github.com/usemoss/moss/sdks/go/tools/install@latest --vendor
 ```
 
 The install tool downloads the static `libmoss` library for your platform. See
 [`../bindings/README.md`](../bindings/README.md) for Windows toolchain notes.
-It vendors the SDK so CGO can link the downloaded library from a writable
-directory; commit `vendor/` if your project commits vendored dependencies.
+The explicit `--vendor` option vendors the SDK so CGO can link the downloaded
+library from a writable directory; commit `vendor/` if your project commits
+vendored dependencies. Run it after your application imports the SDK so the
+bindings package is included in `vendor/`.
 
 Monorepo development uses the workspace in [`../go.work`](../go.work) and
 [`../scripts/link_dev_lib.sh`](../scripts/link_dev_lib.sh).

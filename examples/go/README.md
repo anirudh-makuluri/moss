@@ -23,7 +23,7 @@ Install the native library for your platform:
 ../../sdks/go/scripts/link_dev_lib.sh c-sdk-v0.9.0
 
 # Or after go get:
-go run github.com/usemoss/moss/sdks/go/tools/install@latest
+go run github.com/usemoss/moss/sdks/go/tools/install@latest --vendor
 ```
 
 Then run an example:

@@ -15,13 +15,13 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 )
 
 const (
-	defaultReleaseTag  = "c-sdk-v0.9.0"
 	defaultRepo        = "usemoss/moss"
 	bindingsModulePath = "github.com/usemoss/moss/sdks/go/bindings"
 )
@@ -31,7 +31,6 @@ type platform struct {
 	triple  string
 	libFile string
 	srcLib  string
-	ldflags string
 }
 
 var platforms = []platform{
@@ -58,10 +57,11 @@ func main() {
 	releaseTag := flag.String("release", defaultReleaseTag, "C SDK GitHub release tag")
 	repo := flag.String("repo", defaultRepo, "GitHub repository (owner/name)")
 	bindingsDir := flag.String("bindings", "", "bindings directory (default: auto-detect)")
+	vendor := flag.Bool("vendor", false, "run go mod vendor before installing into a downloaded module")
 	force := flag.Bool("force", false, "re-download even if the library is already installed")
 	flag.Parse()
 
-	root, err := resolveWritableBindingsDir(*bindingsDir)
+	root, err := resolveWritableBindingsDir(*bindingsDir, *vendor)
 	if err != nil {
 		fatal(err)
 	}
@@ -92,9 +92,9 @@ func main() {
 }
 
 // resolveWritableBindingsDir returns the bindings package CGO will compile.
-// Downloaded Go modules are read-only, so an external consumer is vendored
-// before installing the native library beside the bindings source.
-func resolveWritableBindingsDir(explicit string) (string, error) {
+// Downloaded Go modules are read-only, so consumers either need existing
+// vendored bindings or must explicitly permit the installer to create them.
+func resolveWritableBindingsDir(explicit string, allowVendor bool) (string, error) {
 	root, err := resolveBindingsDir(explicit)
 	if err != nil {
 		return "", err
@@ -104,6 +104,12 @@ func resolveWritableBindingsDir(explicit string) (string, error) {
 	}
 	if explicit != "" || strings.TrimSpace(os.Getenv("MOSS_BINDINGS_DIR")) != "" {
 		return "", fmt.Errorf("bindings directory %s is not writable", root)
+	}
+	if vendoredRoot, err := bindingsDirFromGoList("-mod=vendor"); err == nil && isWritableDir(vendoredRoot) {
+		return vendoredRoot, nil
+	}
+	if !allowVendor {
+		return "", errors.New("the downloaded bindings module is read-only; run `go mod vendor` first, or rerun moss install with --vendor to allow it to regenerate vendor/")
 	}
 
 	goMod, err := goEnv("GOMOD")
@@ -317,7 +323,10 @@ func extractTarGz(archivePath, destRoot, version, triple string) error {
 			continue
 		}
 		rel := strings.TrimPrefix(hdr.Name, prefix)
-		target := filepath.Join(destRoot, rel)
+		target, err := safeArchiveTarget(destRoot, rel)
+		if err != nil {
+			return fmt.Errorf("invalid archive path %q: %w", hdr.Name, err)
+		}
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
 		}
@@ -325,6 +334,30 @@ func extractTarGz(archivePath, destRoot, version, triple string) error {
 			return err
 		}
 	}
+}
+
+func safeArchiveTarget(destRoot, rel string) (string, error) {
+	clean := path.Clean(rel)
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") || path.IsAbs(clean) {
+		return "", errors.New("path escapes extraction root")
+	}
+
+	root, err := filepath.Abs(destRoot)
+	if err != nil {
+		return "", err
+	}
+	target, err := filepath.Abs(filepath.Join(root, filepath.FromSlash(clean)))
+	if err != nil {
+		return "", err
+	}
+	relative, err := filepath.Rel(root, target)
+	if err != nil {
+		return "", err
+	}
+	if relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return "", errors.New("path escapes extraction root")
+	}
+	return target, nil
 }
 
 func writeFile(path string, r io.Reader, mode int64) error {

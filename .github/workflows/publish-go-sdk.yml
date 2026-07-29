@@ -29,6 +29,11 @@ jobs:
         with:
           go-version: '1.22.2'
 
+      - name: Configure Git author
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
       - name: Update bindings native version metadata
         shell: bash
         run: |
@@ -42,6 +47,11 @@ jobs:
 
           // NativeLibReleaseTag is the GitHub release tag used to fetch native artifacts.
           const NativeLibReleaseTag = "${C_SDK_VERSION}"
+          EOF
+          cat > sdks/go/tools/install/release.go <<EOF
+          package main
+
+          const defaultReleaseTag = "${C_SDK_VERSION}"
           EOF
 
       - name: Publish source-only module tags

@@ -9,14 +9,15 @@ The Go SDK follows the same two-layer design as the other Moss SDKs:
 
 ```bash
 go get github.com/usemoss/moss/sdks/go/sdk
-go run github.com/usemoss/moss/sdks/go/tools/install@latest
+go run github.com/usemoss/moss/sdks/go/tools/install@latest --vendor
 ```
 
 The install tool downloads the static `libmoss` library for your platform from
 [Moss C SDK GitHub Releases](https://github.com/usemoss/moss/releases). You need
 CGO and a C compiler, but not a manual C SDK download or `LD_LIBRARY_PATH`.
-For external projects, the installer vendors the bindings before placing the
-library next to them, so the normal `go build` command finds it.
+For external projects, the explicit `--vendor` option lets the installer vendor
+the bindings before placing the library next to them, so the normal `go build`
+command finds it.
 
 From a checkout of the bindings package, you can instead use:
 

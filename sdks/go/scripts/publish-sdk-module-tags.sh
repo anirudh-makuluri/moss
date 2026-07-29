@@ -24,12 +24,9 @@ git add sdks/go/bindings/go.mod sdks/go/sdk/go.mod sdks/go/bindings/version.go
 git add sdks/go/bindings/include/libmoss.h sdks/go/bindings/generate.go
 git add sdks/go/tools/install
 
-if git diff --cached --quiet; then
-  echo "Nothing to publish for bindings/sdk ${VERSION}" >&2
-  exit 1
+if ! git diff --cached --quiet; then
+  git commit -m "chore(go): publish bindings and sdk ${VERSION}"
 fi
-
-git commit -m "chore(go): publish bindings and sdk ${VERSION}"
 
 for tag in \
   "sdks/go/bindings/${VERSION}" \

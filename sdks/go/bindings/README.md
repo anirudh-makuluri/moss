@@ -13,14 +13,19 @@ It mirrors the role of the other language bindings packages in this repository:
 
 ```bash
 go get github.com/usemoss/moss/sdks/go/sdk
-go run github.com/usemoss/moss/sdks/go/tools/install@latest
+go run github.com/usemoss/moss/sdks/go/tools/install@latest --vendor
 ```
 
 The install tool downloads a prebuilt static library for your platform from
 [C SDK GitHub Releases](https://github.com/usemoss/moss/releases). No manual C
-SDK download, `LD_LIBRARY_PATH`, or `-tags libmoss` is required. For a
-downloaded module, it runs `go mod vendor` and installs the library beside the
-vendored bindings; subsequent `go build` commands use that copy automatically.
+SDK download, `LD_LIBRARY_PATH`, or `-tags libmoss` is required. The explicit
+`--vendor` option permits the installer to run `go mod vendor` and install the
+library beside the vendored bindings; subsequent `go build` commands use that
+copy automatically. If your project already vendors Moss, omit `--vendor` to
+avoid rewriting its `vendor/` tree.
+
+Run the installer after your application imports the Moss SDK, so `go mod
+vendor` includes the bindings package.
 
 Requirements:
 
