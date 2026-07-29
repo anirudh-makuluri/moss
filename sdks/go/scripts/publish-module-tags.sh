@@ -34,9 +34,9 @@ if [[ -z "$(git status --porcelain sdks/go)" ]]; then
 fi
 
 git add sdks/go/bindings/include/libmoss.h
-git add sdks/go/bindings/lib/*/libmoss.a sdks/go/bindings/lib/*/moss.lib 2>/dev/null || true
-git add sdks/go/bindings/go.mod sdks/go/bindings/go.sum
-git add sdks/go/sdk/go.mod sdks/go/sdk/go.sum
+git add -f sdks/go/bindings/lib/*/libmoss.a sdks/go/bindings/lib/*/moss.lib 2>/dev/null || true
+git add sdks/go/bindings/go.mod
+git add sdks/go/sdk/go.mod
 git add sdks/go/bindings/version.go
 
 if git diff --cached --quiet; then
