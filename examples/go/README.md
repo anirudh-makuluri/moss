@@ -16,10 +16,14 @@ export MOSS_PROJECT_ID=...
 export MOSS_PROJECT_KEY=...
 ```
 
-Install the native library for your platform (monorepo dev):
+Install the native library for your platform:
 
 ```bash
+# Monorepo dev:
 ../../sdks/go/scripts/link_dev_lib.sh c-sdk-v0.9.0
+
+# Or after go get:
+go run github.com/usemoss/moss/sdks/go/tools/install@latest
 ```
 
 Then run an example:
@@ -29,6 +33,3 @@ cd examples/go
 go run ./basic
 go run ./custom-embeddings
 ```
-
-Published installs (`go get github.com/usemoss/moss/sdks/go/sdk`) bundle static
-libraries automatically and do not need the script above.

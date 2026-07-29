@@ -2,4 +2,8 @@
 
 package mosscore
 
-import _ "github.com/usemoss/moss/sdks/go/bindings/lib/windows-amd64"
+/*
+#cgo CFLAGS: -I${SRCDIR}/include
+#cgo LDFLAGS: -L${SRCDIR}/lib/windows-amd64 moss.lib
+*/
+import "C"

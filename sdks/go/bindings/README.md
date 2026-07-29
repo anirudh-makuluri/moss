@@ -13,10 +13,12 @@ It mirrors the role of the other language bindings packages in this repository:
 
 ```bash
 go get github.com/usemoss/moss/sdks/go/sdk
+go run github.com/usemoss/moss/sdks/go/tools/install@latest
 ```
 
-Published releases bundle prebuilt static libraries per platform. No manual C SDK
-download, `LD_LIBRARY_PATH`, or `-tags libmoss` is required.
+The install tool downloads a prebuilt static library for your platform from
+[C SDK GitHub Releases](https://github.com/usemoss/moss/releases). No manual C
+SDK download, `LD_LIBRARY_PATH`, or `-tags libmoss` is required.
 
 Requirements:
 
@@ -29,17 +31,18 @@ Requirements:
 bindings/
   include/libmoss.h          # committed C header
   libmoss.go                 # CGO wrapper (requires CGO)
-  prebuilt_<os>_<arch>.go    # selects the platform linker module
+  prebuilt_<os>_<arch>.go    # per-platform CGO linker flags
+  generate.go                # //go:generate install hook
   lib/
-    linux-amd64/             # separate Go module with libmoss.a (release tags)
+    linux-amd64/             # libmoss.a (gitignored, downloaded at build time)
     linux-arm64/
     darwin-arm64/
     windows-amd64/
 ```
 
-On `main`, native `.a` / `.lib` files are gitignored. Release CI downloads them
-from [C SDK GitHub Releases](https://github.com/usemoss/moss/releases) and
-publishes versioned Go module tags.
+Native `.a` / `.lib` files are gitignored. The
+[`tools/install`](../tools/install) command fetches them from GitHub Releases and
+verifies SHA256 checksums.
 
 ## Local development
 
@@ -49,33 +52,34 @@ Install the native library for your current machine:
 ./sdks/go/scripts/link_dev_lib.sh c-sdk-v0.9.0
 ```
 
-Or fetch all supported platforms (release prep):
+Or fetch all supported platforms:
 
 ```bash
 ./sdks/go/scripts/fetch-static-libs.sh c-sdk-v0.9.0
 ```
 
-Then build with CGO enabled:
+Or use `go generate` from this directory:
 
 ```bash
 cd sdks/go/bindings
+go generate .
+```
+
+Then build with CGO enabled:
+
+```bash
 CGO_ENABLED=1 go build .
 ```
 
 ## Publishing
 
-Maintainers run the **Publish Go SDK** GitHub Actions workflow. It:
+Maintainers run the **Publish Go SDK** GitHub Actions workflow. It creates
+source-only module tags (no binaries in git):
 
-1. Downloads static libraries from a C SDK release
-2. Pins module versions in `go.mod` files
-3. Creates a release commit and pushes module tags (without updating `main`)
+- `sdks/go/sdk/v0.1.0`
+- `sdks/go/bindings/v0.1.0`
 
-Tags follow the monorepo convention:
-
-- `sdks/go/sdk/v0.9.0`
-- `sdks/go/bindings/v0.9.0`
-- `sdks/go/bindings/lib/linux-amd64/v0.9.0`
-- …
+Consumers download native libraries at build time via `tools/install`.
 
 ## Build without CGO
 
