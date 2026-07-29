@@ -28,16 +28,15 @@ PLATFORMS=(
   cd "${BINDINGS_DIR}"
   for platform in "${PLATFORMS[@]}"; do
     go mod edit -require="github.com/usemoss/moss/sdks/go/bindings/lib/${platform}@${VERSION}"
+    go mod edit -dropreplace="github.com/usemoss/moss/sdks/go/bindings/lib/${platform}" 2>/dev/null || true
   done
-  go mod edit -dropreplace=all || true
-  go mod tidy
 )
 
 (
   cd "${SDK_DIR}"
   go mod edit -require="github.com/usemoss/moss/sdks/go/bindings@${VERSION}"
-  go mod edit -dropreplace=all || true
-  go mod tidy
+  go mod edit -dropreplace=github.com/usemoss/moss/sdks/go/bindings 2>/dev/null || true
 )
 
 echo "Pinned Go module versions to ${VERSION}"
+echo "Publish platform lib tags first, then run publish-sdk-module-tags.sh"
