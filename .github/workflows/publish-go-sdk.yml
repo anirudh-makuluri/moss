@@ -13,7 +13,7 @@ on:
       go_version:
         description: 'Go module version to publish'
         required: true
-        default: 'v0.1.0'
+        default: 'v0.1.2'
 
 concurrency:
   group: go-sdk-release-${{ github.event.inputs.go_version }}

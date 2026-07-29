@@ -4,7 +4,7 @@ set -euo pipefail
 # Publishes source-only bindings + sdk module tags.
 #
 # Usage:
-#   ./sdks/go/scripts/publish-sdk-module-tags.sh v0.1.0
+#   ./sdks/go/scripts/publish-sdk-module-tags.sh v0.1.2
 
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <version> [remote]" >&2

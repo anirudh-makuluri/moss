@@ -78,8 +78,8 @@ CGO_ENABLED=1 go build .
 Maintainers run the **Publish Go SDK** GitHub Actions workflow. It creates
 source-only module tags (no binaries in git):
 
-- `sdks/go/sdk/v0.1.0`
-- `sdks/go/bindings/v0.1.0`
+- `sdks/go/sdk/v0.1.2`
+- `sdks/go/bindings/v0.1.2`
 
 Consumers download native libraries during the explicit `tools/install` step.
 
