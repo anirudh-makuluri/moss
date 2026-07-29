@@ -30,7 +30,12 @@ vendor` includes the bindings package.
 Requirements:
 
 - `CGO_ENABLED=1` (default on Linux and macOS)
-- A C compiler (`gcc` on Linux, Xcode CLI tools on macOS, MinGW on Windows)
+- A C compiler (`gcc` on Linux, Xcode CLI tools on macOS)
+- One of the supported native targets: Linux (`amd64`, `arm64`) or Apple Silicon
+  macOS (`arm64`)
+
+Windows currently uses the bindings-unavailable stub. Native Windows support
+will require a MinGW-compatible C SDK release artifact.
 
 ## Layout
 
@@ -44,7 +49,6 @@ bindings/
     linux-amd64/             # libmoss.a (gitignored, downloaded at build time)
     linux-arm64/
     darwin-arm64/
-    windows-amd64/
 ```
 
 Native `.a` / `.lib` files are gitignored. The

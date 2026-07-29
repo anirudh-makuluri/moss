@@ -20,6 +20,8 @@ The Go SDK now has two layers:
 ## Current limitations
 
 - CGO and a C compiler are required for full SDK functionality (`CGO_ENABLED=1`)
+- Native bindings support Linux (`amd64`, `arm64`) and Apple Silicon macOS
+  (`arm64`); unsupported platforms use the bindings-unavailable stub
 - cloud query fallback supports `TopK` and caller-provided embeddings; `Alpha` and `Filter` require a locally loaded index
 - `LoadIndexOptions.CachePath` is not exposed by the current `libmoss` C API yet
 
@@ -31,7 +33,8 @@ go run github.com/usemoss/moss/sdks/go/tools/install@latest --vendor
 ```
 
 The install tool downloads the static `libmoss` library for your platform. See
-[`../bindings/README.md`](../bindings/README.md) for Windows toolchain notes.
+[`../bindings/README.md`](../bindings/README.md) for supported platforms and
+toolchain notes.
 The explicit `--vendor` option vendors the SDK so CGO can link the downloaded
 library from a writable directory; commit `vendor/` if your project commits
 vendored dependencies. Run it after your application imports the SDK so the

@@ -47,10 +47,6 @@ var platforms = []platform{
 		id: "darwin-arm64", triple: "aarch64-apple-darwin",
 		libFile: "libmoss.a", srcLib: "lib/libmoss.a",
 	},
-	{
-		id: "windows-amd64", triple: "x86_64-pc-windows-msvc",
-		libFile: "moss.lib", srcLib: "lib/moss.lib",
-	},
 }
 
 func main() {
@@ -238,8 +234,6 @@ func currentPlatformID() (string, error) {
 		return "linux-arm64", nil
 	case "darwin/arm64":
 		return "darwin-arm64", nil
-	case "windows/amd64":
-		return "windows-amd64", nil
 	default:
 		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 	}

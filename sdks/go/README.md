@@ -19,6 +19,10 @@ For external projects, the explicit `--vendor` option lets the installer vendor
 the bindings before placing the library next to them, so the normal `go build`
 command finds it.
 
+Native bindings currently support Linux (`amd64`, `arm64`) and Apple Silicon
+macOS (`arm64`). Other platforms, including Windows, use the
+bindings-unavailable stub until a compatible native release is available.
+
 From a checkout of the bindings package, you can instead use:
 
 ```bash
