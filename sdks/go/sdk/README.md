@@ -32,6 +32,8 @@ go run github.com/usemoss/moss/sdks/go/tools/install@latest
 
 The install tool downloads the static `libmoss` library for your platform. See
 [`../bindings/README.md`](../bindings/README.md) for Windows toolchain notes.
+It vendors the SDK so CGO can link the downloaded library from a writable
+directory; commit `vendor/` if your project commits vendored dependencies.
 
 Monorepo development uses the workspace in [`../go.work`](../go.work) and
 [`../scripts/link_dev_lib.sh`](../scripts/link_dev_lib.sh).

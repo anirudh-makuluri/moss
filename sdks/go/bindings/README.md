@@ -18,7 +18,9 @@ go run github.com/usemoss/moss/sdks/go/tools/install@latest
 
 The install tool downloads a prebuilt static library for your platform from
 [C SDK GitHub Releases](https://github.com/usemoss/moss/releases). No manual C
-SDK download, `LD_LIBRARY_PATH`, or `-tags libmoss` is required.
+SDK download, `LD_LIBRARY_PATH`, or `-tags libmoss` is required. For a
+downloaded module, it runs `go mod vendor` and installs the library beside the
+vendored bindings; subsequent `go build` commands use that copy automatically.
 
 Requirements:
 
@@ -32,7 +34,7 @@ bindings/
   include/libmoss.h          # committed C header
   libmoss.go                 # CGO wrapper (requires CGO)
   prebuilt_<os>_<arch>.go    # per-platform CGO linker flags
-  generate.go                # //go:generate install hook
+  generate.go                # //go:generate install hook for checkouts
   lib/
     linux-amd64/             # libmoss.a (gitignored, downloaded at build time)
     linux-arm64/
@@ -58,7 +60,7 @@ Or fetch all supported platforms:
 ./sdks/go/scripts/fetch-static-libs.sh c-sdk-v0.9.0
 ```
 
-Or use `go generate` from this directory:
+Or use `go generate` from a checkout of this directory:
 
 ```bash
 cd sdks/go/bindings
@@ -79,7 +81,7 @@ source-only module tags (no binaries in git):
 - `sdks/go/sdk/v0.1.0`
 - `sdks/go/bindings/v0.1.0`
 
-Consumers download native libraries at build time via `tools/install`.
+Consumers download native libraries during the explicit `tools/install` step.
 
 ## Build without CGO
 

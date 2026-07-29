@@ -61,7 +61,7 @@ func main() {
 	force := flag.Bool("force", false, "re-download even if the library is already installed")
 	flag.Parse()
 
-	root, err := resolveBindingsDir(*bindingsDir)
+	root, err := resolveWritableBindingsDir(*bindingsDir)
 	if err != nil {
 		fatal(err)
 	}
@@ -81,24 +81,47 @@ func main() {
 	}
 
 	for _, p := range targets {
-		libDir, installHeader, err := resolveLibDir(root, version, p.id)
-		if err != nil {
-			fatal(err)
-		}
-		if err := installPlatform(root, libDir, installHeader, baseURL, version, p, checksums, *force); err != nil {
+		libDir := filepath.Join(root, "lib", p.id)
+		if err := installPlatform(root, libDir, true, baseURL, version, p, checksums, *force); err != nil {
 			fatal(fmt.Errorf("%s: %w", p.id, err))
-		}
-		if libDir != filepath.Join(root, "lib", p.id) {
-			printLinkerHint(p, libDir)
 		}
 	}
 
 	fmt.Printf("Installed Moss C SDK %s\n", *releaseTag)
-	if !isWritableDir(root) {
-		fmt.Println("Build with -mod=vendor after `go mod vendor`, or export the CGO_LDFLAGS shown above.")
-	} else {
-		fmt.Printf("Native libraries installed under %s\n", root)
+	fmt.Printf("Native libraries installed under %s\n", root)
+}
+
+// resolveWritableBindingsDir returns the bindings package CGO will compile.
+// Downloaded Go modules are read-only, so an external consumer is vendored
+// before installing the native library beside the bindings source.
+func resolveWritableBindingsDir(explicit string) (string, error) {
+	root, err := resolveBindingsDir(explicit)
+	if err != nil {
+		return "", err
 	}
+	if isWritableDir(root) {
+		return root, nil
+	}
+	if explicit != "" || strings.TrimSpace(os.Getenv("MOSS_BINDINGS_DIR")) != "" {
+		return "", fmt.Errorf("bindings directory %s is not writable", root)
+	}
+
+	goMod, err := goEnv("GOMOD")
+	if err != nil || goMod == os.DevNull || goMod == "" {
+		return "", fmt.Errorf("the downloaded bindings module is read-only; run this command from a Go module that imports the Moss SDK")
+	}
+	if out, err := exec.Command("go", "mod", "vendor").CombinedOutput(); err != nil {
+		return "", fmt.Errorf("vendor Moss bindings for native installation: %w\n%s", err, strings.TrimSpace(string(out)))
+	}
+
+	root, err = bindingsDirFromGoList("-mod=vendor")
+	if err != nil {
+		return "", fmt.Errorf("locate vendored Moss bindings after `go mod vendor`: %w", err)
+	}
+	if !isWritableDir(root) {
+		return "", fmt.Errorf("vendored bindings directory %s is not writable", root)
+	}
+	return root, nil
 }
 
 func resolveBindingsDir(explicit string) (string, error) {
@@ -118,8 +141,10 @@ func resolveBindingsDir(explicit string) (string, error) {
 	return filepath.Abs(filepath.Join(filepath.Dir(file), "..", "..", "bindings"))
 }
 
-func bindingsDirFromGoList() (string, error) {
-	cmd := exec.Command("go", "list", "-f", "{{.Dir}}", bindingsModulePath)
+func bindingsDirFromGoList(args ...string) (string, error) {
+	args = append([]string{"list"}, args...)
+	args = append(args, "-f", "{{.Dir}}", bindingsModulePath)
+	cmd := exec.Command("go", args...)
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -129,19 +154,6 @@ func bindingsDirFromGoList() (string, error) {
 		return "", errors.New("bindings package directory not found")
 	}
 	return filepath.Abs(dir)
-}
-
-func resolveLibDir(bindingsRoot, version, platformID string) (string, bool, error) {
-	inBindings := filepath.Join(bindingsRoot, "lib", platformID)
-	if isWritableDir(bindingsRoot) {
-		return inBindings, true, nil
-	}
-
-	cacheRoot, err := os.UserCacheDir()
-	if err != nil {
-		return "", false, err
-	}
-	return filepath.Join(cacheRoot, "moss-go", version, platformID), false, nil
 }
 
 func isWritableDir(dir string) bool {
@@ -156,15 +168,12 @@ func isWritableDir(dir string) bool {
 	return true
 }
 
-func printLinkerHint(p platform, libDir string) {
-	switch p.id {
-	case "darwin-arm64":
-		fmt.Printf("export CGO_LDFLAGS=\"-L%s -lmoss -lc++ -framework Security -framework SystemConfiguration\"\n", libDir)
-	case "windows-amd64":
-		fmt.Printf("set CGO_LDFLAGS=-L%s %s\n", libDir, p.libFile)
-	default:
-		fmt.Printf("export CGO_LDFLAGS=\"-L%s -lmoss -lstdc++ -ldl -lm -lpthread\"\n", libDir)
+func goEnv(name string) (string, error) {
+	out, err := exec.Command("go", "env", name).Output()
+	if err != nil {
+		return "", err
 	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 func selectPlatforms(all bool) ([]platform, error) {

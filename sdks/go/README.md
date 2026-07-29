@@ -15,8 +15,10 @@ go run github.com/usemoss/moss/sdks/go/tools/install@latest
 The install tool downloads the static `libmoss` library for your platform from
 [Moss C SDK GitHub Releases](https://github.com/usemoss/moss/releases). You need
 CGO and a C compiler, but not a manual C SDK download or `LD_LIBRARY_PATH`.
+For external projects, the installer vendors the bindings before placing the
+library next to them, so the normal `go build` command finds it.
 
-Alternatively, from a checkout of the bindings package:
+From a checkout of the bindings package, you can instead use:
 
 ```bash
 go generate github.com/usemoss/moss/sdks/go/bindings
