@@ -48,11 +48,6 @@ jobs:
           // NativeLibReleaseTag is the GitHub release tag used to fetch native artifacts.
           const NativeLibReleaseTag = "${C_SDK_VERSION}"
           EOF
-          cat > sdks/go/tools/install/release.go <<EOF
-          package main
-
-          const defaultReleaseTag = "${C_SDK_VERSION}"
-          EOF
 
       - name: Publish source-only module tags
         run: ./sdks/go/scripts/publish-sdk-module-tags.sh "${{ github.event.inputs.go_version }}"

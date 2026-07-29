@@ -24,6 +24,7 @@ import (
 const (
 	defaultRepo        = "usemoss/moss"
 	bindingsModulePath = "github.com/usemoss/moss/sdks/go/bindings"
+	installReceiptName = ".moss-install-checksum"
 )
 
 type platform struct {
@@ -54,7 +55,7 @@ var platforms = []platform{
 
 func main() {
 	all := flag.Bool("all", false, "install libraries for all supported platforms")
-	releaseTag := flag.String("release", defaultReleaseTag, "C SDK GitHub release tag")
+	releaseTag := flag.String("release", "", "C SDK GitHub release tag (default: target bindings metadata)")
 	repo := flag.String("repo", defaultRepo, "GitHub repository (owner/name)")
 	bindingsDir := flag.String("bindings", "", "bindings directory (default: auto-detect)")
 	vendor := flag.Bool("vendor", false, "run go mod vendor before installing into a downloaded module")
@@ -64,6 +65,12 @@ func main() {
 	root, err := resolveWritableBindingsDir(*bindingsDir, *vendor)
 	if err != nil {
 		fatal(err)
+	}
+	if *releaseTag == "" {
+		*releaseTag, err = nativeReleaseTag(root)
+		if err != nil {
+			fatal(err)
+		}
 	}
 
 	version := strings.TrimPrefix(*releaseTag, "c-sdk-")
@@ -182,6 +189,31 @@ func goEnv(name string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+func nativeReleaseTag(bindingsRoot string) (string, error) {
+	f, err := os.Open(filepath.Join(bindingsRoot, "version.go"))
+	if err != nil {
+		return "", fmt.Errorf("read bindings native version: %w", err)
+	}
+	defer f.Close()
+
+	const prefix = "const NativeLibReleaseTag = \""
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if !strings.HasPrefix(line, prefix) || !strings.HasSuffix(line, "\"") {
+			continue
+		}
+		tag := strings.TrimSuffix(strings.TrimPrefix(line, prefix), "\"")
+		if tag != "" {
+			return tag, nil
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("read bindings native version: %w", err)
+	}
+	return "", errors.New("NativeLibReleaseTag not found in bindings/version.go; pass -release explicitly")
+}
+
 func selectPlatforms(all bool) ([]platform, error) {
 	if all {
 		return platforms, nil
@@ -245,17 +277,9 @@ func installPlatform(bindingsRoot, libDir string, installHeader bool, baseURL, v
 	destLib := filepath.Join(destDir, p.libFile)
 	headerPath := filepath.Join(bindingsRoot, "include", "libmoss.h")
 
-	if !force {
-		if err := verifyFileChecksum(destLib, wantChecksum); err == nil {
-			if !installHeader {
-				fmt.Printf("skip %s (already installed)\n", p.id)
-				return nil
-			}
-			if _, err := os.Stat(headerPath); err == nil {
-				fmt.Printf("skip %s (already installed)\n", p.id)
-				return nil
-			}
-		}
+	if !force && fileExists(destLib) && (!installHeader || fileExists(headerPath)) && receiptMatches(filepath.Join(destDir, installReceiptName), archive, wantChecksum) {
+		fmt.Printf("skip %s (already installed)\n", p.id)
+		return nil
 	}
 
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
@@ -291,9 +315,43 @@ func installPlatform(bindingsRoot, libDir string, installHeader bool, baseURL, v
 	if err := copyFile(filepath.Join(extractedRoot, p.srcLib), destLib); err != nil {
 		return err
 	}
+	if err := writeReceipt(filepath.Join(destDir, installReceiptName), archive, wantChecksum); err != nil {
+		return err
+	}
 
 	fmt.Printf("installed %s -> %s\n", p.id, destLib)
 	return nil
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
+}
+
+func receiptMatches(path, archive, checksum string) bool {
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(contents)) == checksum+"  "+archive
+}
+
+func writeReceipt(path, archive, checksum string) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".moss-install-*")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	if _, err := fmt.Fprintf(tmp, "%s  %s\n", checksum, archive); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, path)
 }
 
 func extractTarGz(archivePath, destRoot, version, triple string) error {
@@ -410,23 +468,6 @@ func downloadFile(url, dest, wantChecksum string) error {
 		return fmt.Errorf("checksum mismatch for %s: got %s want %s", filepath.Base(dest), got, wantChecksum)
 	}
 	return os.Rename(tmpPath, dest)
-}
-
-func verifyFileChecksum(path, want string) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	hasher := sha256.New()
-	if _, err := io.Copy(hasher, f); err != nil {
-		return err
-	}
-	if hex.EncodeToString(hasher.Sum(nil)) != want {
-		return fmt.Errorf("checksum mismatch")
-	}
-	return nil
 }
 
 func copyFile(src, dest string) error {
