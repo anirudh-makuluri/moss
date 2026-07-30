@@ -102,7 +102,7 @@ func resolveWritableBindingsDir(explicit string, allowVendor bool) (string, erro
 	if err != nil {
 		return "", err
 	}
-	if isWritableDir(root) {
+	if isWritableDir(root) && (explicit != "" || strings.TrimSpace(os.Getenv("MOSS_BINDINGS_DIR")) != "" || !isModuleCacheDir(root)) {
 		return root, nil
 	}
 	if explicit != "" || strings.TrimSpace(os.Getenv("MOSS_BINDINGS_DIR")) != "" {
@@ -137,6 +137,23 @@ func resolveWritableBindingsDir(explicit string, allowVendor bool) (string, erro
 		return "", fmt.Errorf("vendored bindings directory %s is not writable", root)
 	}
 	return root, nil
+}
+
+func isModuleCacheDir(dir string) bool {
+	cacheDir, err := goEnv("GOMODCACHE")
+	if err != nil || cacheDir == "" {
+		return false
+	}
+	cacheDir, err = filepath.Abs(cacheDir)
+	if err != nil {
+		return false
+	}
+	dir, err = filepath.Abs(dir)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(cacheDir, dir)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 func vendorDependencies(goWork string) error {

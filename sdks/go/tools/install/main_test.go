@@ -81,3 +81,16 @@ func TestCopyFileDoesNotTruncateDestinationOnSourceError(t *testing.T) {
 		t.Fatalf("destination = %q, want known-good", contents)
 	}
 }
+
+func TestIsModuleCacheDir(t *testing.T) {
+	cacheDir := t.TempDir()
+	t.Setenv("GOMODCACHE", cacheDir)
+
+	inside := filepath.Join(cacheDir, "github.com", "usemoss", "moss")
+	if !isModuleCacheDir(inside) {
+		t.Fatalf("isModuleCacheDir(%q) = false, want true", inside)
+	}
+	if isModuleCacheDir(filepath.Dir(cacheDir)) {
+		t.Fatal("isModuleCacheDir() = true outside the module cache")
+	}
+}

@@ -30,6 +30,17 @@ jobs:
           CGO_ENABLED: '0'
         run: go test ./...
 
+      - name: Verify SDK standalone module mode
+        working-directory: sdks/go/sdk
+        env:
+          CGO_ENABLED: '0'
+          GOWORK: 'off'
+        run: go test ./...
+
+      - name: Run native installer tests
+        working-directory: sdks/go/tools/install
+        run: go test ./...
+
   bindings-smoke:
     runs-on: ubuntu-latest
     steps:
