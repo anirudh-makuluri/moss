@@ -18,6 +18,23 @@ REPO_ROOT="$(cd "${ROOT_DIR}/../.." && pwd)"
 
 cd "${REPO_ROOT}"
 
+TAGS=(
+  "sdks/go/bindings/${VERSION}"
+  "sdks/go/sdk/${VERSION}"
+  "sdks/go/tools/install/${VERSION}"
+)
+
+for tag in "${TAGS[@]}"; do
+  if git rev-parse --verify --quiet "refs/tags/${tag}" >/dev/null; then
+    echo "Refusing to overwrite existing local tag ${tag}" >&2
+    exit 1
+  fi
+  if [[ -n "$(git ls-remote --tags "${REMOTE}" "refs/tags/${tag}")" ]]; then
+    echo "Refusing to overwrite existing remote tag ${tag}" >&2
+    exit 1
+  fi
+done
+
 "${ROOT_DIR}/scripts/bump-module-versions.sh" "${VERSION}"
 
 git add sdks/go/bindings/go.mod sdks/go/sdk/go.mod sdks/go/bindings/version.go
@@ -28,11 +45,14 @@ if ! git diff --cached --quiet; then
   git commit -m "chore(go): publish bindings and sdk ${VERSION}"
 fi
 
-for tag in \
-  "sdks/go/bindings/${VERSION}" \
-  "sdks/go/sdk/${VERSION}" \
-  "sdks/go/tools/install/${VERSION}"; do
-  git tag -f "${tag}"
-  git push "${REMOTE}" "${tag}"
-  echo "Published ${tag}"
+for tag in "${TAGS[@]}"; do
+  git tag "${tag}"
 done
+
+REFS=("${TAGS[@]/#/refs/tags/}")
+if ! git push --atomic "${REMOTE}" "${REFS[@]}"; then
+  git tag -d "${TAGS[@]}" >/dev/null
+  exit 1
+fi
+
+printf 'Published %s\n' "${TAGS[@]}"

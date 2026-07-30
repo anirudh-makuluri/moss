@@ -59,5 +59,14 @@ jobs:
           const NativeLibReleaseTag = "${C_SDK_VERSION}"
           EOF
 
+      - name: Verify selected C SDK release
+        working-directory: sdks/go
+        run: go run ./tools/install --all --release "$C_SDK_VERSION"
+
+      - name: Verify native Go SDK build
+        run: |
+          (cd sdks/go/bindings && CGO_ENABLED=1 go build .)
+          (cd sdks/go/sdk && CGO_ENABLED=1 go build .)
+
       - name: Publish source-only module tags
         run: ./sdks/go/scripts/publish-sdk-module-tags.sh "$GO_VERSION"

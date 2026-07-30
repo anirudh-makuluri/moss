@@ -115,17 +115,23 @@ func resolveWritableBindingsDir(explicit string, allowVendor bool) (string, erro
 		return "", errors.New("the downloaded bindings module is read-only; run `go mod vendor` first, or rerun moss install with --vendor to allow it to regenerate vendor/")
 	}
 
-	goMod, err := goEnv("GOMOD")
-	if err != nil || goMod == os.DevNull || goMod == "" {
-		return "", fmt.Errorf("the downloaded bindings module is read-only; run this command from a Go module that imports the Moss SDK")
+	goWork, err := goEnv("GOWORK")
+	if err != nil {
+		return "", fmt.Errorf("detect Go workspace: %w", err)
 	}
-	if err := vendorDependencies(); err != nil {
+	if goWork == "" || goWork == "off" {
+		goMod, err := goEnv("GOMOD")
+		if err != nil || goMod == os.DevNull || goMod == "" {
+			return "", fmt.Errorf("the downloaded bindings module is read-only; run this command from a Go module that imports the Moss SDK")
+		}
+	}
+	if err := vendorDependencies(goWork); err != nil {
 		return "", err
 	}
 
 	root, err = bindingsDirFromGoList("-mod=vendor")
 	if err != nil {
-		return "", fmt.Errorf("locate vendored Moss bindings after `go mod vendor`: %w", err)
+		return "", fmt.Errorf("locate vendored Moss bindings after vendoring dependencies: %w", err)
 	}
 	if !isWritableDir(root) {
 		return "", fmt.Errorf("vendored bindings directory %s is not writable", root)
@@ -133,11 +139,7 @@ func resolveWritableBindingsDir(explicit string, allowVendor bool) (string, erro
 	return root, nil
 }
 
-func vendorDependencies() error {
-	goWork, err := goEnv("GOWORK")
-	if err != nil {
-		return fmt.Errorf("detect Go workspace: %w", err)
-	}
+func vendorDependencies(goWork string) error {
 	args := vendorArgs(goWork)
 	out, err := exec.Command("go", args...).CombinedOutput()
 	if err != nil {
