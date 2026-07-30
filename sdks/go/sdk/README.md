@@ -39,6 +39,7 @@ The explicit `--vendor` option vendors the SDK so CGO can link the downloaded
 library from a writable directory; commit `vendor/` if your project commits
 vendored dependencies. Run it after your application imports the SDK so the
 bindings package is included in `vendor/`.
+In a Go workspace, the installer uses `go work vendor` instead.
 
 Monorepo development uses the workspace in [`../go.work`](../go.work) and
 [`../scripts/link_dev_lib.sh`](../scripts/link_dev_lib.sh).

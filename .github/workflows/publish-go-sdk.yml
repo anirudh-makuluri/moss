@@ -22,6 +22,9 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      C_SDK_VERSION: ${{ github.event.inputs.c_sdk_version }}
+      GO_VERSION: ${{ github.event.inputs.go_version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -37,7 +40,14 @@ jobs:
       - name: Update bindings native version metadata
         shell: bash
         run: |
-          C_SDK_VERSION="${{ github.event.inputs.c_sdk_version }}"
+          if [[ ! "${C_SDK_VERSION}" =~ ^c-sdk-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "c_sdk_version must be a c-sdk-vMAJOR.MINOR.PATCH tag" >&2
+            exit 1
+          fi
+          if [[ ! "${GO_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "go_version must be a vMAJOR.MINOR.PATCH tag" >&2
+            exit 1
+          fi
           NATIVE_VERSION="${C_SDK_VERSION#c-sdk-v}"
           cat > sdks/go/bindings/version.go <<EOF
           package mosscore
@@ -50,4 +60,4 @@ jobs:
           EOF
 
       - name: Publish source-only module tags
-        run: ./sdks/go/scripts/publish-sdk-module-tags.sh "${{ github.event.inputs.go_version }}"
+        run: ./sdks/go/scripts/publish-sdk-module-tags.sh "$GO_VERSION"

@@ -119,8 +119,8 @@ func resolveWritableBindingsDir(explicit string, allowVendor bool) (string, erro
 	if err != nil || goMod == os.DevNull || goMod == "" {
 		return "", fmt.Errorf("the downloaded bindings module is read-only; run this command from a Go module that imports the Moss SDK")
 	}
-	if out, err := exec.Command("go", "mod", "vendor").CombinedOutput(); err != nil {
-		return "", fmt.Errorf("vendor Moss bindings for native installation: %w\n%s", err, strings.TrimSpace(string(out)))
+	if err := vendorDependencies(); err != nil {
+		return "", err
 	}
 
 	root, err = bindingsDirFromGoList("-mod=vendor")
@@ -131,6 +131,26 @@ func resolveWritableBindingsDir(explicit string, allowVendor bool) (string, erro
 		return "", fmt.Errorf("vendored bindings directory %s is not writable", root)
 	}
 	return root, nil
+}
+
+func vendorDependencies() error {
+	goWork, err := goEnv("GOWORK")
+	if err != nil {
+		return fmt.Errorf("detect Go workspace: %w", err)
+	}
+	args := vendorArgs(goWork)
+	out, err := exec.Command("go", args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("vendor Moss bindings for native installation: %w\n%s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+func vendorArgs(goWork string) []string {
+	if goWork != "" && goWork != "off" {
+		return []string{"work", "vendor"}
+	}
+	return []string{"mod", "vendor"}
 }
 
 func resolveBindingsDir(explicit string) (string, error) {
@@ -471,14 +491,25 @@ func copyFile(src, dest string) error {
 	}
 	defer in.Close()
 
-	out, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	tmp, err := os.CreateTemp(filepath.Dir(dest), ".moss-install-*")
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
 
-	_, err = io.Copy(out, in)
-	return err
+	if err := tmp.Chmod(0o644); err != nil {
+		tmp.Close()
+		return err
+	}
+	if _, err := io.Copy(tmp, in); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, dest)
 }
 
 func fatal(err error) {

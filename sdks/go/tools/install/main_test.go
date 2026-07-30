@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -50,5 +51,33 @@ func TestInstallReceipt(t *testing.T) {
 	}
 	if receiptMatches(path, "libmoss-v0.9.0-x86_64-unknown-linux-gnu.tar.gz", "different") {
 		t.Fatal("receiptMatches() = true for a different checksum, want false")
+	}
+}
+
+func TestVendorArgs(t *testing.T) {
+	if got, want := vendorArgs(""), []string{"mod", "vendor"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("vendorArgs(\"\") = %v, want %v", got, want)
+	}
+	if got, want := vendorArgs("/work/go.work"), []string{"work", "vendor"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("vendorArgs(workspace) = %v, want %v", got, want)
+	}
+}
+
+func TestCopyFileDoesNotTruncateDestinationOnSourceError(t *testing.T) {
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "libmoss.a")
+	if err := os.WriteFile(dest, []byte("known-good"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := copyFile(filepath.Join(dir, "missing"), dest); err == nil {
+		t.Fatal("copyFile succeeded with a missing source")
+	}
+	contents, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(contents) != "known-good" {
+		t.Fatalf("destination = %q, want known-good", contents)
 	}
 }

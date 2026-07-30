@@ -24,6 +24,9 @@ library beside the vendored bindings; subsequent `go build` commands use that
 copy automatically. If your project already vendors Moss, omit `--vendor` to
 avoid rewriting its `vendor/` tree.
 
+When run from a Go workspace, `--vendor` uses `go work vendor` and installs the
+library in the workspace-level `vendor/` directory.
+
 Run the installer after your application imports the Moss SDK, so `go mod
 vendor` includes the bindings package.
 
