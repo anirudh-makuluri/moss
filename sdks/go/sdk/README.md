@@ -151,7 +151,7 @@ Runnable examples live here:
 Run them from the monorepo:
 
 ```bash
-../../sdks/go/scripts/link_dev_lib.sh c-sdk-v0.9.0
+../scripts/link_dev_lib.sh c-sdk-v0.9.0
 cd ../../../examples/go
 go run ./basic
 ```
